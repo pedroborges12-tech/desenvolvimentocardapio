@@ -3,6 +3,9 @@ import { db } from '@/lib/db';
 import { ensureRestaurantSeeded } from '@/lib/seedHelper';
 import { corsResponse, handleOptions } from '@/lib/api';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function OPTIONS() {
   return handleOptions();
 }
