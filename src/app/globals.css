@@ -40,3 +40,17 @@
 html {
   scroll-behavior: smooth;
 }
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  @page {
+    margin: 0;
+    size: auto;
+  }
+}
