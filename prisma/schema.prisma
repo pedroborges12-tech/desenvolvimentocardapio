@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Restaurant {
+  id                    String     @id @default(cuid())
+  name                  String
+  slug                  String     @unique
+  isOpen                Boolean    @default(true)
+  openingHours          String     @default("18:00 às 23:30")
+  phone                 String     @default("(11) 99999-8888")
+  whatsappNumber        String     @default("5511999998888")
+  address               String     @default("Av. Paulista, 1000 - Bela Vista, São Paulo/SP")
+  googleRating          Float      @default(4.9)
+  googleReviewCount     Int        @default(482)
+  estimatedDeliveryTime String     @default("30 - 45 min")
+  deliveryFee           Float      @default(7.00)
+  minOrderValue         Float      @default(20.00)
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  categories Category[]
+  orders     Order[]
+}
+
+model Category {
+  id           String     @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  slug         String
+  order        Int        @default(0)
+  items        MenuItem[]
+
+  @@index([restaurantId])
+}
+
+model MenuItem {
+  id              String      @id @default(cuid())
+  categoryId      String
+  category        Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name            String
+  description     String
+  price           Float
+  image           String
+  isBestSeller    Boolean     @default(false)
+  isHouseFavorite Boolean     @default(false)
+  isAvailable     Boolean     @default(true)
+  stockLimit      Int?
+  orderItems      OrderItem[]
+
+  @@index([categoryId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @default(cuid())
+  restaurantId    String
+  restaurant      Restaurant  @relation(fields: [restaurantId], references: [id])
+  customerName    String
+  customerPhone   String
+  deliveryType    String      @default("DELIVERY")
+  address         String?
+  subtotal        Float
+  deliveryFee     Float
+  total           Float
+  notes           String?
+  status          String      @default("PENDING")
+  paymentMethod   String
+  paymentProvider String      @default("mercadopago")
+  paymentId       String?
+  pixQrCode       String?
+  pixCopyPaste    String?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([restaurantId])
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  name       String
+  quantity   Int
+  unitPrice  Float
+  notes      String?
+
+  @@index([orderId])
+  @@index([menuItemId])
+}
