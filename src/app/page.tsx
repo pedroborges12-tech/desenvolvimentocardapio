@@ -81,7 +81,6 @@ export default function Home() {
           const data = await res.json();
           setRestaurant(data);
         } else {
-          // Retry automático via endpoint relativo se getApiUrl falhar
           const resFallback = await fetch('/api/restaurant');
           if (resFallback.ok) {
             const dataFallback = await resFallback.json();
@@ -97,6 +96,16 @@ export default function Home() {
     fetchRestaurant();
   }, []);
 
+  // Item de destaque dinâmico
+  const highlightItem = useMemo(() => {
+    if (!restaurant || !restaurant.categories) return undefined;
+    for (const cat of restaurant.categories) {
+      const best = cat.items.find((i) => i.isBestSeller || i.isHouseFavorite);
+      if (best) return best;
+    }
+    return restaurant.categories[0]?.items[0];
+  }, [restaurant]);
+
   // Totalizadores do Carrinho
   const totalCartItems = useMemo(
     () => cart.reduce((acc, curr) => acc + curr.quantity, 0),
@@ -110,6 +119,10 @@ export default function Home() {
 
   // Manipulação de Carrinho
   const handleAddToCart = (item: MenuItemData, quantity: number, notes: string) => {
+    if (restaurant && !restaurant.isOpen) {
+      alert('O restaurante está fechado no momento e não está aceitando novos pedidos.');
+      return;
+    }
     setCart((prev) => {
       const existingIndex = prev.findIndex((i) => i.item.id === item.id && i.notes === notes);
       if (existingIndex > -1) {
@@ -157,10 +170,15 @@ export default function Home() {
     paymentMethod: 'PIX' | 'CREDIT_CARD';
     notes: string;
   }) => {
+    if (restaurant && !restaurant.isOpen) {
+      alert('O restaurante está fechado no momento e não está aceitando novos pedidos.');
+      return;
+    }
+
     setIsSubmittingCheckout(true);
 
     try {
-      const response = await fetch('/api/checkout', {
+      const response = await fetch(getApiUrl('/api/checkout'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -193,6 +211,8 @@ export default function Home() {
       } else {
         setConfirmedOrder(data.order);
       }
+    } catch (err) {
+      alert((err as Error).message || 'Erro ao enviar pedido.');
     } finally {
       setIsSubmittingCheckout(false);
     }
@@ -204,7 +224,7 @@ export default function Home() {
         <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center animate-bounce text-2xl shadow-lg shadow-amber-500/20">
           🍔
         </div>
-        <p className="text-xs font-bold text-zinc-400 animate-pulse">Carregando cardápio gourmet...</p>
+        <p className="text-xs font-bold text-zinc-400 animate-pulse">Carregando cardápio...</p>
       </div>
     );
   }
@@ -212,15 +232,15 @@ export default function Home() {
   if (!restaurant) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white">
-        Restaurante não encontrado.
+        Carregando restaurante...
       </div>
     );
   }
 
   // Filtragem de Produtos
-  const filteredCategories = restaurant.categories
+  const filteredCategories = (restaurant.categories || [])
     .map((cat) => {
-      let items = cat.items;
+      let items = cat.items || [];
       if (activeCategoryId !== 'all' && cat.id !== activeCategoryId) {
         items = [];
       }
@@ -251,19 +271,24 @@ export default function Home() {
       {/* 2. Restaurant Closed Banner (if applicable) */}
       {!restaurant.isOpen && <RestaurantClosedBanner openingHours={restaurant.openingHours} />}
 
-      {/* 3. Hero & Urgency Banner */}
+      {/* 3. Hero & Urgency Banner Dinâmico */}
       <BannerHero
+        restaurantName={restaurant.name}
         estimatedDeliveryTime={restaurant.estimatedDeliveryTime}
         deliveryFee={restaurant.deliveryFee}
         minOrderValue={restaurant.minOrderValue}
+        highlightItem={highlightItem}
       />
 
-      {/* 4. Social Proof Bar */}
-      <SocialProof />
+      {/* 4. Social Proof Bar Dinâmico */}
+      <SocialProof
+        googleRating={restaurant.googleRating}
+        googleReviewCount={restaurant.googleReviewCount}
+      />
 
       {/* 5. Category Navigation & Realtime Search */}
       <CategoryNav
-        categories={restaurant.categories}
+        categories={restaurant.categories || []}
         activeCategoryId={activeCategoryId}
         onSelectCategory={setActiveCategoryId}
         searchQuery={searchQuery}
@@ -357,7 +382,7 @@ export default function Home() {
           pixCopyPaste={pixModalData.pixCopyPaste}
           onClose={() => setPixModalData(null)}
           onPaymentConfirmed={async () => {
-            const res = await fetch(`/api/orders/${pixModalData.orderId}`);
+            const res = await fetch(getApiUrl(`/api/orders/${pixModalData.orderId}`));
             if (res.ok) {
               const data = await res.json();
               setConfirmedOrder(data);
