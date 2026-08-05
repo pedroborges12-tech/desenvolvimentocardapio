@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { corsResponse, handleOptions } from '@/lib/api';
+
+export async function OPTIONS(req: Request) {
+  return handleOptions(req);
+}
 
 export async function POST(req: Request) {
   try {
@@ -12,18 +17,18 @@ export async function POST(req: Request) {
       const cookieStore = await cookies();
       cookieStore.set('admin_session', 'authenticated', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: true,
+        sameSite: 'none', // Necessário para cookies de sessão entre domínios no Vercel
         path: '/',
         maxAge: 60 * 60 * 24 * 7, // 7 dias de validade
       });
 
-      return NextResponse.json({ success: true });
+      return corsResponse({ success: true }, 200, req);
     }
 
-    return NextResponse.json({ error: 'Usuário ou senha incorretos' }, { status: 401 });
+    return corsResponse({ error: 'Usuário ou senha incorretos' }, 401, req);
   } catch (error) {
     console.error('Erro no login admin:', error);
-    return NextResponse.json({ error: 'Erro ao processar login' }, { status: 500 });
+    return corsResponse({ error: 'Erro ao processar login' }, 500, req);
   }
 }

@@ -66,9 +66,7 @@ export default function Home() {
 
   // Carregar dados da API
   useEffect(() => {
-    const isAdminOnly =
-      process.env.NEXT_PUBLIC_IS_ADMIN_ONLY === 'true' ||
-      (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.length > 0);
+    const isAdminOnly = process.env.NEXT_PUBLIC_IS_ADMIN_ONLY === 'true';
 
     if (isAdminOnly) {
       window.location.href = '/admin';

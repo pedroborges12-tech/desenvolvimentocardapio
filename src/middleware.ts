@@ -4,10 +4,8 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const url = request.nextUrl;
 
-  // Se o deploy for o do Painel Admin (NEXT_PUBLIC_IS_ADMIN_ONLY=true ou se tiver NEXT_PUBLIC_API_URL)
-  const isAdminOnly =
-    process.env.NEXT_PUBLIC_IS_ADMIN_ONLY === 'true' ||
-    (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.length > 0);
+  // Redireciona para /admin apenas se o projeto for configurado exclusivamente como Admin
+  const isAdminOnly = process.env.NEXT_PUBLIC_IS_ADMIN_ONLY === 'true';
 
   if (isAdminOnly && url.pathname === '/') {
     return NextResponse.redirect(new URL('/admin', request.url));
