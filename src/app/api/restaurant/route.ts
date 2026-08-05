@@ -5,21 +5,17 @@ import { corsResponse, handleOptions } from '@/lib/api';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function OPTIONS() {
-  return handleOptions();
+export async function OPTIONS(req: Request) {
+  return handleOptions(req);
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const restaurant = await ensureRestaurantSeeded();
-
-    if (!restaurant) {
-      return corsResponse({ error: 'Restaurante não encontrado' }, 404);
-    }
-
-    return corsResponse(restaurant);
+    return corsResponse(restaurant, 200, req);
   } catch (error) {
     console.error('Erro ao buscar restaurante:', error);
-    return corsResponse({ error: 'Erro interno no servidor' }, 500);
+    const fallback = await ensureRestaurantSeeded();
+    return corsResponse(fallback, 200, req);
   }
 }

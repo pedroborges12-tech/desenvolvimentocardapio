@@ -12,6 +12,7 @@ import { CheckoutModal, CartItem } from '@/components/CheckoutModal';
 import { PixModal } from '@/components/PixModal';
 import { OrderConfirmationModal } from '@/components/OrderConfirmationModal';
 import { RestaurantClosedBanner } from '@/components/RestaurantClosedBanner';
+import { getApiUrl } from '@/lib/api';
 
 interface RestaurantData {
   id: string;
@@ -75,10 +76,17 @@ export default function Home() {
 
     async function fetchRestaurant() {
       try {
-        const res = await fetch('/api/restaurant');
+        const res = await fetch(getApiUrl('/api/restaurant'));
         if (res.ok) {
           const data = await res.json();
           setRestaurant(data);
+        } else {
+          // Retry automático via endpoint relativo se getApiUrl falhar
+          const resFallback = await fetch('/api/restaurant');
+          if (resFallback.ok) {
+            const dataFallback = await resFallback.json();
+            setRestaurant(dataFallback);
+          }
         }
       } catch (err) {
         console.error('Erro ao carregar restaurante:', err);
