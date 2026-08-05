@@ -1,9 +1,20 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { ensureRestaurantSeeded } from '@/lib/seedHelper';
 
 export async function GET() {
   try {
+    const restaurant = await ensureRestaurantSeeded();
+    if (!restaurant) {
+      return NextResponse.json({ error: 'Restaurante não encontrado' }, { status: 404 });
+    }
+
     const items = await db.menuItem.findMany({
+      where: {
+        category: {
+          restaurantId: restaurant.id,
+        },
+      },
       include: { category: true },
       orderBy: { name: 'asc' },
     });
@@ -36,10 +47,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const restaurant = await db.restaurant.findFirst({
-      where: { slug: 'burger-co' },
-    });
-
+    const restaurant = await ensureRestaurantSeeded();
     if (!restaurant) {
       return NextResponse.json({ error: 'Restaurante não encontrado' }, { status: 404 });
     }
@@ -122,10 +130,7 @@ export async function PATCH(req: Request) {
     let targetCategoryId = categoryId;
 
     if (newCategoryName && newCategoryName.trim()) {
-      const restaurant = await db.restaurant.findFirst({
-        where: { slug: 'burger-co' },
-      });
-
+      const restaurant = await ensureRestaurantSeeded();
       if (restaurant) {
         const slug = newCategoryName.toLowerCase().replace(/[^a-z0-9]/g, '-');
         const existingCat = await db.category.findFirst({
@@ -179,7 +184,6 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'ID do item é obrigatório para exclusão' }, { status: 400 });
     }
 
-    // Remover relacionamentos de OrderItem se existirem para permitir exclusão limpa
     await db.orderItem.deleteMany({
       where: { menuItemId: id },
     });

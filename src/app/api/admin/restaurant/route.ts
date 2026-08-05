@@ -15,7 +15,17 @@ export async function GET() {
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
-    const { isOpen, openingHours, deliveryFee, estimatedDeliveryTime } = body;
+    const {
+      name,
+      phone,
+      whatsappNumber,
+      address,
+      isOpen,
+      openingHours,
+      deliveryFee,
+      estimatedDeliveryTime,
+      googleRating,
+    } = body;
 
     const restaurant = await ensureRestaurantSeeded();
 
@@ -26,10 +36,15 @@ export async function PATCH(req: Request) {
     const updated = await db.restaurant.update({
       where: { id: restaurant.id },
       data: {
+        name: name || restaurant.name,
+        phone: phone || restaurant.phone,
+        whatsappNumber: whatsappNumber || restaurant.whatsappNumber,
+        address: address || restaurant.address,
         isOpen: typeof isOpen === 'boolean' ? isOpen : restaurant.isOpen,
         openingHours: openingHours || restaurant.openingHours,
         deliveryFee: typeof deliveryFee === 'number' ? deliveryFee : restaurant.deliveryFee,
         estimatedDeliveryTime: estimatedDeliveryTime || restaurant.estimatedDeliveryTime,
+        googleRating: typeof googleRating === 'number' ? googleRating : restaurant.googleRating,
       },
     });
 
