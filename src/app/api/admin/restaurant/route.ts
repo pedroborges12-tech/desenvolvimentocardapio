@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { ensureRestaurantSeeded } from '@/lib/seedHelper';
 
 export async function GET() {
   try {
-    const restaurant = await db.restaurant.findFirst({
-      where: { slug: 'burger-co' },
-    });
+    const restaurant = await ensureRestaurantSeeded();
     return NextResponse.json(restaurant);
   } catch (error) {
     console.error('Erro ao buscar status do restaurante:', error);
@@ -18,9 +17,7 @@ export async function PATCH(req: Request) {
     const body = await req.json();
     const { isOpen, openingHours, deliveryFee, estimatedDeliveryTime } = body;
 
-    const restaurant = await db.restaurant.findFirst({
-      where: { slug: 'burger-co' },
-    });
+    const restaurant = await ensureRestaurantSeeded();
 
     if (!restaurant) {
       return NextResponse.json({ error: 'Restaurante não encontrado' }, { status: 404 });
