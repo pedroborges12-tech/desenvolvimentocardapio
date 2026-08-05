@@ -8,7 +8,8 @@
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "eslint",
-    "payments:use": "node scripts/use-payment.js"
+    "payments:use": "node scripts/use-payment.js",
+    "admin:set": "node scripts/set-admin.js"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

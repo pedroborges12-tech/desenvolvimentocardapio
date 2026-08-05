@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Store, Utensils, Clock, CheckCircle, AlertCircle, RefreshCw, Phone, MapPin, Printer } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Store, Utensils, Clock, CheckCircle, AlertCircle, RefreshCw, Phone, MapPin, Printer, LogOut } from 'lucide-react';
 import { ThermalReceipt, PrintableOrder } from '@/components/ThermalReceipt';
 
 interface OrderItem {
@@ -31,12 +32,31 @@ interface Order {
 }
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isOpen, setIsOpen] = useState(true);
   const [loading, setLoading] = useState(true);
 
   // Estado dos pedidos sendo impressos
   const [printingOrders, setPrintingOrders] = useState<PrintableOrder[]>([]);
+
+  // Checagem de Autenticação ao carregar
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/admin/check-auth');
+        const data = await res.json();
+        if (!data.authenticated) {
+          router.push('/admin/login');
+          return;
+        }
+        fetchDashboard();
+      } catch (err) {
+        router.push('/admin/login');
+      }
+    }
+    checkAuth();
+  }, [router]);
 
   const fetchDashboard = async () => {
     try {
@@ -61,7 +81,6 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    fetchDashboard();
     const interval = setInterval(fetchDashboard, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -85,7 +104,12 @@ export default function AdminDashboard() {
     fetchDashboard();
   };
 
-  // Função para imprimir pedido único
+  const handleLogout = async () => {
+    await fetch('/api/admin/logout', { method: 'POST' });
+    router.push('/admin/login');
+    router.refresh();
+  };
+
   const handlePrintSingle = (order: Order) => {
     setPrintingOrders([order]);
     setTimeout(() => {
@@ -93,7 +117,6 @@ export default function AdminDashboard() {
     }, 150);
   };
 
-  // Função para imprimir todos os pedidos em lote
   const handlePrintAll = () => {
     if (orders.length === 0) return;
     setPrintingOrders(orders);
@@ -105,14 +128,14 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white text-xs font-bold">
-        Carregando painel do restaurante...
+        Autenticando e carregando painel do restaurante...
       </div>
     );
   }
 
   return (
     <>
-      {/* Componente Térmico de Impressão (Só aparece no comando window.print) */}
+      {/* Componente Térmico de Impressão */}
       <ThermalReceipt orders={printingOrders} />
 
       {/* Interface Principal (Oculta durante a impressão com a classe no-print) */}
@@ -126,7 +149,7 @@ export default function AdminDashboard() {
                 <span>Painel de Pedidos & Gestão</span>
               </h1>
               <p className="text-xs text-zinc-400 mt-1">
-                Acompanhe pedidos em tempo real, imprima cupons térmicos e altere a disponibilidade.
+                Acompanhe pedidos em tempo real, imprima cupons e gerencie seu cardápio.
               </p>
             </div>
 
@@ -150,6 +173,15 @@ export default function AdminDashboard() {
                 <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-zinc-950' : 'bg-white'}`} />
                 {isOpen ? 'Restaurante Aberto' : 'Restaurante Fechado'}
               </button>
+
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 hover:bg-rose-500/10 hover:text-rose-400 text-xs font-bold text-zinc-400 transition"
+                title="Sair da sessão"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Sair</span>
+              </button>
             </div>
           </div>
 
@@ -164,7 +196,6 @@ export default function AdminDashboard() {
               </h2>
 
               <div className="flex items-center gap-2">
-                {/* Botão Imprimir Todos */}
                 <button
                   onClick={handlePrintAll}
                   disabled={orders.length === 0}
@@ -265,7 +296,6 @@ export default function AdminDashboard() {
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 pt-1 flex-wrap">
-                        {/* Botão Imprimir Individual */}
                         <button
                           onClick={() => handlePrintSingle(order)}
                           className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold border border-zinc-700 transition"

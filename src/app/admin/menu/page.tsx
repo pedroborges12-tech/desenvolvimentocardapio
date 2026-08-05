@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Check, X, Image as ImageIcon, Flame, Star, Upload, Trash2, Edit3, AlertTriangle } from 'lucide-react';
 
 interface Category {
@@ -30,9 +31,27 @@ const PRESET_IMAGES = [
 ];
 
 export default function AdminMenuPage() {
+  const router = useRouter();
   const [items, setItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/admin/check-auth');
+        const data = await res.json();
+        if (!data.authenticated) {
+          router.push('/admin/login');
+          return;
+        }
+        fetchMenu();
+      } catch (err) {
+        router.push('/admin/login');
+      }
+    }
+    checkAuth();
+  }, [router]);
 
   // Edição Rápida de Preço inline
   const [inlineEditingId, setInlineEditingId] = useState<string | null>(null);
