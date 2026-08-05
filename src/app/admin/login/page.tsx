@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, User, Key, Eye, EyeOff, ArrowRight, Store } from 'lucide-react';
+import { getApiUrl } from '@/lib/api';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await fetch(getApiUrl('/api/admin/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),

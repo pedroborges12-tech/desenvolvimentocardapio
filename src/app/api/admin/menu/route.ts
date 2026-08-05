@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ensureRestaurantSeeded } from '@/lib/seedHelper';
+import { corsResponse, handleOptions } from '@/lib/api';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function GET() {
   try {
     const restaurant = await ensureRestaurantSeeded();
     if (!restaurant) {
-      return NextResponse.json({ error: 'Restaurante não encontrado' }, { status: 404 });
+      return corsResponse({ error: 'Restaurante não encontrado' }, 404);
     }
 
     const items = await db.menuItem.findMany({
@@ -18,10 +23,10 @@ export async function GET() {
       include: { category: true },
       orderBy: { name: 'asc' },
     });
-    return NextResponse.json(items);
+    return corsResponse(items);
   } catch (error) {
     console.error('Erro ao buscar itens admin:', error);
-    return NextResponse.json({ error: 'Erro ao buscar itens' }, { status: 500 });
+    return corsResponse({ error: 'Erro ao buscar itens' }, 500);
   }
 }
 
@@ -41,15 +46,15 @@ export async function POST(req: Request) {
     } = body;
 
     if (!name || !description || !price || Number(price) <= 0) {
-      return NextResponse.json(
+      return corsResponse(
         { error: 'Nome, descrição e preço válido são obrigatórios.' },
-        { status: 400 }
+        400
       );
     }
 
     const restaurant = await ensureRestaurantSeeded();
     if (!restaurant) {
-      return NextResponse.json({ error: 'Restaurante não encontrado' }, { status: 404 });
+      return corsResponse({ error: 'Restaurante não encontrado' }, 404);
     }
 
     let targetCategoryId = categoryId;
@@ -76,7 +81,7 @@ export async function POST(req: Request) {
     }
 
     if (!targetCategoryId) {
-      return NextResponse.json({ error: 'Selecione ou informe uma categoria válida.' }, { status: 400 });
+      return corsResponse({ error: 'Selecione ou informe uma categoria válida.' }, 400);
     }
 
     const defaultImage =
@@ -100,10 +105,10 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json(newItem, { status: 201 });
+    return corsResponse(newItem, 201);
   } catch (error) {
     console.error('Erro ao cadastrar produto:', error);
-    return NextResponse.json({ error: 'Erro ao cadastrar produto' }, { status: 500 });
+    return corsResponse({ error: 'Erro ao cadastrar produto' }, 500);
   }
 }
 
@@ -124,7 +129,7 @@ export async function PATCH(req: Request) {
     } = body;
 
     if (!id) {
-      return NextResponse.json({ error: 'ID do item é obrigatório' }, { status: 400 });
+      return corsResponse({ error: 'ID do item é obrigatório' }, 400);
     }
 
     let targetCategoryId = categoryId;
@@ -168,10 +173,10 @@ export async function PATCH(req: Request) {
       include: { category: true },
     });
 
-    return NextResponse.json(updated);
+    return corsResponse(updated);
   } catch (error) {
     console.error('Erro ao atualizar item do cardápio:', error);
-    return NextResponse.json({ error: 'Erro ao atualizar item' }, { status: 500 });
+    return corsResponse({ error: 'Erro ao atualizar item' }, 500);
   }
 }
 
@@ -181,7 +186,7 @@ export async function DELETE(req: Request) {
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ error: 'ID do item é obrigatório para exclusão' }, { status: 400 });
+      return corsResponse({ error: 'ID do item é obrigatório para exclusão' }, 400);
     }
 
     await db.orderItem.deleteMany({
@@ -192,9 +197,9 @@ export async function DELETE(req: Request) {
       where: { id },
     });
 
-    return NextResponse.json({ success: true, deletedId: id });
+    return corsResponse({ success: true, deletedId: id });
   } catch (error) {
     console.error('Erro ao excluir item do cardápio:', error);
-    return NextResponse.json({ error: 'Erro ao excluir item' }, { status: 500 });
+    return corsResponse({ error: 'Erro ao excluir item' }, 500);
   }
 }

@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getActivePaymentProvider } from '@/lib/payments';
 import { ensureRestaurantSeeded } from '@/lib/seedHelper';
+import { corsResponse, handleOptions } from '@/lib/api';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function POST(req: Request) {
   try {
@@ -17,21 +22,19 @@ export async function POST(req: Request) {
     } = body;
 
     if (!customerName || !customerPhone || !items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: 'Preencha todos os campos obrigatórios e adicione ao menos um item.' }, { status: 400 });
+      return corsResponse({ error: 'Preencha todos os campos obrigatórios e adicione ao menos um item.' }, 400);
     }
 
-    // Buscar restaurante com garantia de auto-seed
     const restaurant = await ensureRestaurantSeeded();
 
     if (!restaurant) {
-      return NextResponse.json({ error: 'Restaurante não encontrado' }, { status: 404 });
+      return corsResponse({ error: 'Restaurante não encontrado' }, 404);
     }
 
     if (!restaurant.isOpen) {
-      return NextResponse.json({ error: 'O restaurante está fechado no momento e não está aceitando novos pedidos.' }, { status: 400 });
+      return corsResponse({ error: 'O restaurante está fechado no momento e não está aceitando novos pedidos.' }, 400);
     }
 
-    // Buscar itens do banco de dados e calcular valores seguros
     const menuItemIds = items.map((i: { menuItemId: string }) => i.menuItemId);
     const dbMenuItems = await db.menuItem.findMany({
       where: { id: { in: menuItemIds } },
@@ -58,7 +61,6 @@ export async function POST(req: Request) {
     const deliveryFee = deliveryType === 'DELIVERY' ? restaurant.deliveryFee : 0;
     const total = subtotal + deliveryFee;
 
-    // Criar o Pedido no SQLite com status PENDING
     const order = await db.order.create({
       data: {
         restaurantId: restaurant.id,
@@ -82,7 +84,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // Processar Cobrança usando o Adapter Ativo
     const provider = getActivePaymentProvider();
     const chargeResult = await provider.createCharge({
       orderId: order.id,
@@ -95,7 +96,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // Atualizar dados de pagamento no pedido
     const updatedOrder = await db.order.update({
       where: { id: order.id },
       data: {
@@ -110,12 +110,12 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({
+    return corsResponse({
       order: updatedOrder,
       charge: chargeResult,
     });
   } catch (error) {
     console.error('Erro ao processar checkout:', error);
-    return NextResponse.json({ error: (error as Error).message || 'Erro ao processar pedido' }, { status: 500 });
+    return corsResponse({ error: (error as Error).message || 'Erro ao processar pedido' }, 500);
   }
 }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Check, X, Image as ImageIcon, Flame, Star, Upload, Trash2, Edit3, AlertTriangle } from 'lucide-react';
+import { getApiUrl } from '@/lib/api';
 
 interface Category {
   id: string;
@@ -39,7 +40,7 @@ export default function AdminMenuPage() {
   useEffect(() => {
     async function checkAuth() {
       try {
-        const res = await fetch('/api/admin/check-auth');
+        const res = await fetch(getApiUrl('/api/admin/check-auth'));
         const data = await res.json();
         if (!data.authenticated) {
           router.push('/admin/login');
@@ -81,8 +82,8 @@ export default function AdminMenuPage() {
   const fetchMenu = async () => {
     try {
       const [resItems, resCats] = await Promise.all([
-        fetch('/api/admin/menu'),
-        fetch('/api/admin/categories'),
+        fetch(getApiUrl('/api/admin/menu')),
+        fetch(getApiUrl('/api/admin/categories')),
       ]);
 
       if (resItems.ok) {
@@ -112,7 +113,7 @@ export default function AdminMenuPage() {
       prev.map((i) => (i.id === id ? { ...i, isAvailable: !currentStatus } : i))
     );
 
-    await fetch('/api/admin/menu', {
+    await fetch(getApiUrl('/api/admin/menu'), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, isAvailable: !currentStatus }),
@@ -122,7 +123,7 @@ export default function AdminMenuPage() {
   // Salvar Preço Inline (Atalho Rápido no Card)
   const handleSavePriceInline = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    await fetch('/api/admin/menu', {
+    await fetch(getApiUrl('/api/admin/menu'), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, price: Number(editPriceInline) }),
@@ -209,7 +210,7 @@ export default function AdminMenuPage() {
 
     try {
       const isEdit = Boolean(editingItem);
-      const url = '/api/admin/menu';
+      const url = getApiUrl('/api/admin/menu');
       const method = isEdit ? 'PATCH' : 'POST';
 
       const payload = {
@@ -253,7 +254,7 @@ export default function AdminMenuPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/admin/menu?id=${editingItem.id}`, {
+      const response = await fetch(getApiUrl(`/api/admin/menu?id=${editingItem.id}`), {
         method: 'DELETE',
       });
 

@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ensureRestaurantSeeded } from '@/lib/seedHelper';
+import { corsResponse, handleOptions } from '@/lib/api';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function GET() {
   try {
     const restaurant = await ensureRestaurantSeeded();
-    return NextResponse.json(restaurant);
+    return corsResponse(restaurant);
   } catch (error) {
     console.error('Erro ao buscar status do restaurante:', error);
-    return NextResponse.json({ error: 'Erro ao buscar dados' }, { status: 500 });
+    return corsResponse({ error: 'Erro ao buscar dados' }, 500);
   }
 }
 
@@ -30,7 +35,7 @@ export async function PATCH(req: Request) {
     const restaurant = await ensureRestaurantSeeded();
 
     if (!restaurant) {
-      return NextResponse.json({ error: 'Restaurante não encontrado' }, { status: 404 });
+      return corsResponse({ error: 'Restaurante não encontrado' }, 404);
     }
 
     const updated = await db.restaurant.update({
@@ -48,9 +53,9 @@ export async function PATCH(req: Request) {
       },
     });
 
-    return NextResponse.json(updated);
+    return corsResponse(updated);
   } catch (error) {
     console.error('Erro ao atualizar dados do restaurante:', error);
-    return NextResponse.json({ error: 'Erro ao atualizar dados' }, { status: 500 });
+    return corsResponse({ error: 'Erro ao atualizar dados' }, 500);
   }
 }

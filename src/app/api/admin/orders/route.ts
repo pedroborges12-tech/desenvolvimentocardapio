@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ensureRestaurantSeeded } from '@/lib/seedHelper';
+import { corsResponse, handleOptions } from '@/lib/api';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function GET() {
   try {
     const restaurant = await ensureRestaurantSeeded();
     if (!restaurant) {
-      return NextResponse.json({ error: 'Restaurante não encontrado' }, { status: 404 });
+      return corsResponse({ error: 'Restaurante não encontrado' }, 404);
     }
 
     const orders = await db.order.findMany({
@@ -16,10 +21,10 @@ export async function GET() {
         items: true,
       },
     });
-    return NextResponse.json(orders);
+    return corsResponse(orders);
   } catch (error) {
     console.error('Erro ao buscar pedidos admin:', error);
-    return NextResponse.json({ error: 'Erro ao buscar pedidos' }, { status: 500 });
+    return corsResponse({ error: 'Erro ao buscar pedidos' }, 500);
   }
 }
 
@@ -29,7 +34,7 @@ export async function PATCH(req: Request) {
     const { orderId, status } = body;
 
     if (!orderId || !status) {
-      return NextResponse.json({ error: 'orderId e status são obrigatórios' }, { status: 400 });
+      return corsResponse({ error: 'orderId e status são obrigatórios' }, 400);
     }
 
     const updated = await db.order.update({
@@ -38,9 +43,9 @@ export async function PATCH(req: Request) {
       include: { items: true },
     });
 
-    return NextResponse.json(updated);
+    return corsResponse(updated);
   } catch (error) {
     console.error('Erro ao atualizar status do pedido:', error);
-    return NextResponse.json({ error: 'Erro ao atualizar pedido' }, { status: 500 });
+    return corsResponse({ error: 'Erro ao atualizar pedido' }, 500);
   }
 }

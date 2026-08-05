@@ -1,17 +1,22 @@
 import { NextResponse } from 'next/server';
 import { ensureRestaurantSeeded } from '@/lib/seedHelper';
+import { corsResponse, handleOptions } from '@/lib/api';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function GET() {
   try {
     const restaurant = await ensureRestaurantSeeded();
 
     if (!restaurant) {
-      return NextResponse.json({ error: 'Restaurante não encontrado' }, { status: 404 });
+      return corsResponse({ error: 'Restaurante não encontrado' }, 404);
     }
 
-    return NextResponse.json(restaurant);
+    return corsResponse(restaurant);
   } catch (error) {
     console.error('Erro ao buscar restaurante:', error);
-    return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 });
+    return corsResponse({ error: 'Erro interno no servidor' }, 500);
   }
 }
