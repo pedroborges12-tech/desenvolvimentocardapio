@@ -1,10 +1,8 @@
-import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { ensureRestaurantSeeded } from '@/lib/seedHelper';
+import { ensureRestaurantAdmin } from '@/lib/seedHelper';
 import { corsResponse, handleOptions } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export async function OPTIONS(req: Request) {
   return handleOptions(req);
@@ -14,14 +12,11 @@ export async function GET(req: Request) {
   try {
     const orders = await db.order.findMany({
       orderBy: { createdAt: 'desc' },
-      include: {
-        items: true,
-      },
-    }).catch(() => []);
-
+      include: { items: true },
+    });
     return corsResponse(orders, 200, req);
   } catch (error) {
-    console.error('Erro ao buscar pedidos admin:', error);
+    console.error('Erro ao buscar pedidos:', error);
     return corsResponse([], 200, req);
   }
 }
@@ -39,11 +34,11 @@ export async function PATCH(req: Request) {
       where: { id: orderId },
       data: { status },
       include: { items: true },
-    }).catch(() => ({ id: orderId, status }));
+    });
 
     return corsResponse(updated, 200, req);
   } catch (error) {
-    console.error('Erro ao atualizar status do pedido:', error);
-    return corsResponse({ error: 'Erro ao atualizar pedido' }, 500, req);
+    console.error('Erro ao atualizar pedido:', error);
+    return corsResponse({ error: 'Erro ao atualizar' }, 500, req);
   }
 }

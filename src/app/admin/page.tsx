@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Store, Utensils, Clock, CheckCircle, AlertCircle, RefreshCw, Phone, MapPin, Printer, LogOut } from 'lucide-react';
 import { ThermalReceipt, PrintableOrder } from '@/components/ThermalReceipt';
-import { getApiUrl } from '@/lib/api';
 
 interface OrderItem {
   id: string;
@@ -45,7 +44,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function checkAuth() {
       try {
-        const res = await fetch(getApiUrl('/api/admin/check-auth'));
+        const res = await fetch('/api/admin/check-auth');
         const data = await res.json();
         if (!data.authenticated) {
           router.push('/admin/login');
@@ -62,8 +61,8 @@ export default function AdminDashboard() {
   const fetchDashboard = async () => {
     try {
       const [resOrders, resRest] = await Promise.all([
-        fetch(getApiUrl('/api/admin/orders')),
-        fetch(getApiUrl('/api/admin/restaurant')),
+        fetch('/api/admin/orders'),
+        fetch('/api/admin/restaurant'),
       ]);
 
       if (resOrders.ok) {
@@ -89,7 +88,7 @@ export default function AdminDashboard() {
   const toggleRestaurantOpen = async () => {
     const nextState = !isOpen;
     setIsOpen(nextState);
-    await fetch(getApiUrl('/api/admin/restaurant'), {
+    await fetch('/api/admin/restaurant', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isOpen: nextState }),
@@ -97,7 +96,7 @@ export default function AdminDashboard() {
   };
 
   const updateOrderStatus = async (orderId: string, status: string) => {
-    await fetch(getApiUrl('/api/admin/orders'), {
+    await fetch('/api/admin/orders', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ orderId, status }),
@@ -106,7 +105,7 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = async () => {
-    await fetch(getApiUrl('/api/admin/logout'), { method: 'POST' });
+    await fetch('/api/admin/logout', { method: 'POST' });
     router.push('/admin/login');
     router.refresh();
   };

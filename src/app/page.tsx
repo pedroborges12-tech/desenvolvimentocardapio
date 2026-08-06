@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { BannerHero } from '@/components/BannerHero';
 import { SocialProof } from '@/components/SocialProof';
@@ -12,7 +12,6 @@ import { CheckoutModal, CartItem } from '@/components/CheckoutModal';
 import { PixModal } from '@/components/PixModal';
 import { OrderConfirmationModal } from '@/components/OrderConfirmationModal';
 import { RestaurantClosedBanner } from '@/components/RestaurantClosedBanner';
-import { getApiUrl } from '@/lib/api';
 
 interface RestaurantData {
   id: string;
@@ -37,14 +36,13 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [activeCategoryId, setActiveCategoryId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const fetchingRef = useRef(false);
 
-  // Estados dos modais e carrinho
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<MenuItemData | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSubmittingCheckout, setIsSubmittingCheckout] = useState(false);
 
-  // Modal Pix e Confirmação
   const [pixModalData, setPixModalData] = useState<{
     orderId: string;
     orderNumber: string;
@@ -65,40 +63,19 @@ export default function Home() {
     items: Array<{ name: string; quantity: number; unitPrice: number; notes?: string }>;
   } | null>(null);
 
-  // Carregar dados da API
   useEffect(() => {
-    const isAdminOnly = process.env.NEXT_PUBLIC_IS_ADMIN_ONLY === 'true';
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
 
-    if (isAdminOnly) {
-      window.location.href = '/admin';
-      return;
-    }
-
-    async function fetchRestaurant() {
-      try {
-        const res = await fetch(getApiUrl('/api/restaurant'));
-        if (res.ok) {
-          const data = await res.json();
-          setRestaurant(data);
-        } else {
-          const resFallback = await fetch('/api/restaurant');
-          if (resFallback.ok) {
-            const dataFallback = await resFallback.json();
-            setRestaurant(dataFallback);
-          }
-        }
-      } catch (err) {
-        console.error('Erro ao carregar restaurante:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchRestaurant();
+    fetch('/api/restaurant')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data) setRestaurant(data); })
+      .catch(() => {})
+      .finally(() => { setLoading(false); fetchingRef.current = false; });
   }, []);
 
-  // Item de destaque dinâmico
   const highlightItem = useMemo(() => {
-    if (!restaurant || !restaurant.categories) return undefined;
+    if (!restaurant?.categories) return undefined;
     for (const cat of restaurant.categories) {
       const best = cat.items.find((i) => i.isBestSeller || i.isHouseFavorite);
       if (best) return best;
@@ -106,62 +83,43 @@ export default function Home() {
     return restaurant.categories[0]?.items[0];
   }, [restaurant]);
 
-  // Totalizadores do Carrinho
-  const totalCartItems = useMemo(
-    () => cart.reduce((acc, curr) => acc + curr.quantity, 0),
-    [cart]
-  );
+  const totalCartItems = useMemo(() => cart.reduce((a, c) => a + c.quantity, 0), [cart]);
+  const cartSubtotal = useMemo(() => cart.reduce((a, c) => a + c.item.price * c.quantity, 0), [cart]);
 
-  const cartSubtotal = useMemo(
-    () => cart.reduce((acc, curr) => acc + curr.item.price * curr.quantity, 0),
-    [cart]
-  );
-
-  // Manipulação de Carrinho
   const handleAddToCart = (item: MenuItemData, quantity: number, notes: string) => {
     if (restaurant && !restaurant.isOpen) {
-      alert('O restaurante está fechado no momento e não está aceitando novos pedidos.');
+      alert('O restaurante está fechado no momento.');
       return;
     }
     setCart((prev) => {
-      const existingIndex = prev.findIndex((i) => i.item.id === item.id && i.notes === notes);
-      if (existingIndex > -1) {
+      const idx = prev.findIndex((i) => i.item.id === item.id && i.notes === notes);
+      if (idx > -1) {
         const updated = [...prev];
-        updated[existingIndex].quantity += quantity;
+        updated[idx].quantity += quantity;
         return updated;
       }
       return [...prev, { item, quantity, notes }];
     });
   };
 
-  const handleAddQuick = (item: MenuItemData) => {
-    handleAddToCart(item, 1, '');
-  };
+  const handleAddQuick = (item: MenuItemData) => handleAddToCart(item, 1, '');
 
   const handleRemoveQuick = (itemId: string) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.item.id === itemId);
       if (!existing) return prev;
-      if (existing.quantity > 1) {
-        return prev.map((i) => (i.item.id === itemId ? { ...i, quantity: i.quantity - 1 } : i));
-      }
+      if (existing.quantity > 1) return prev.map((i) => i.item.id === itemId ? { ...i, quantity: i.quantity - 1 } : i);
       return prev.filter((i) => i.item.id !== itemId);
     });
   };
 
   const handleUpdateQuantity = (itemId: string, newQty: number) => {
-    if (newQty <= 0) {
-      setCart((prev) => prev.filter((i) => i.item.id !== itemId));
-    } else {
-      setCart((prev) => prev.map((i) => (i.item.id === itemId ? { ...i, quantity: newQty } : i)));
-    }
+    if (newQty <= 0) setCart((prev) => prev.filter((i) => i.item.id !== itemId));
+    else setCart((prev) => prev.map((i) => i.item.id === itemId ? { ...i, quantity: newQty } : i));
   };
 
-  const handleRemoveItem = (itemId: string) => {
-    setCart((prev) => prev.filter((i) => i.item.id !== itemId));
-  };
+  const handleRemoveItem = (itemId: string) => setCart((prev) => prev.filter((i) => i.item.id !== itemId));
 
-  // Submeter Checkout 1-Step
   const handleSubmitCheckout = async (orderData: {
     customerName: string;
     customerPhone: string;
@@ -171,31 +129,22 @@ export default function Home() {
     notes: string;
   }) => {
     if (restaurant && !restaurant.isOpen) {
-      alert('O restaurante está fechado no momento e não está aceitando novos pedidos.');
+      alert('O restaurante está fechado no momento.');
       return;
     }
-
     setIsSubmittingCheckout(true);
-
     try {
-      const response = await fetch(getApiUrl('/api/checkout'), {
+      const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...orderData,
-          items: cart.map((c) => ({
-            menuItemId: c.item.id,
-            quantity: c.quantity,
-            notes: c.notes,
-          })),
+          items: cart.map((c) => ({ menuItemId: c.item.id, quantity: c.quantity, notes: c.notes })),
         }),
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao processar checkout');
-      }
+      if (!response.ok) throw new Error(data.error || 'Erro ao processar pedido');
 
       setIsCheckoutOpen(false);
       setCart([]);
@@ -205,8 +154,8 @@ export default function Home() {
           orderId: data.order.id,
           orderNumber: data.order.orderNumber,
           total: data.order.total,
-          pixQrCode: data.charge.pixQrCode,
-          pixCopyPaste: data.charge.pixCopyPaste,
+          pixQrCode: data.charge?.pixQrCode,
+          pixCopyPaste: data.charge?.pixCopyPaste,
         });
       } else {
         setConfirmedOrder(data.order);
@@ -220,10 +169,8 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center space-y-4 text-white">
-        <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center animate-bounce text-2xl shadow-lg shadow-amber-500/20">
-          🍔
-        </div>
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center animate-bounce text-2xl">🍔</div>
         <p className="text-xs font-bold text-zinc-400 animate-pulse">Carregando cardápio...</p>
       </div>
     );
@@ -231,32 +178,30 @@ export default function Home() {
 
   if (!restaurant) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white">
-        Carregando restaurante...
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-4">
+        <div className="text-4xl">😕</div>
+        <p className="text-zinc-400 text-sm">Não foi possível carregar o cardápio. Tente novamente.</p>
+        <button onClick={() => window.location.reload()} className="px-4 py-2 bg-amber-500 text-zinc-950 font-bold rounded-xl text-sm">
+          Tentar novamente
+        </button>
       </div>
     );
   }
 
-  // Filtragem de Produtos
   const filteredCategories = (restaurant.categories || [])
     .map((cat) => {
       let items = cat.items || [];
-      if (activeCategoryId !== 'all' && cat.id !== activeCategoryId) {
-        items = [];
-      }
+      if (activeCategoryId !== 'all' && cat.id !== activeCategoryId) items = [];
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        items = items.filter(
-          (i) => i.name.toLowerCase().includes(q) || i.description.toLowerCase().includes(q)
-        );
+        items = items.filter((i) => i.name.toLowerCase().includes(q) || i.description.toLowerCase().includes(q));
       }
       return { ...cat, items };
     })
     .filter((cat) => cat.items.length > 0);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-amber-500 selection:text-zinc-950 pb-28">
-      {/* 1. Header */}
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 pb-28">
       <Header
         restaurantName={restaurant.name}
         isOpen={restaurant.isOpen}
@@ -268,10 +213,8 @@ export default function Home() {
         onOpenCart={() => setIsCheckoutOpen(true)}
       />
 
-      {/* 2. Restaurant Closed Banner (if applicable) */}
       {!restaurant.isOpen && <RestaurantClosedBanner openingHours={restaurant.openingHours} />}
 
-      {/* 3. Hero & Urgency Banner Dinâmico */}
       <BannerHero
         restaurantName={restaurant.name}
         estimatedDeliveryTime={restaurant.estimatedDeliveryTime}
@@ -280,13 +223,11 @@ export default function Home() {
         highlightItem={highlightItem}
       />
 
-      {/* 4. Social Proof Bar Dinâmico */}
       <SocialProof
         googleRating={restaurant.googleRating}
         googleReviewCount={restaurant.googleReviewCount}
       />
 
-      {/* 5. Category Navigation & Realtime Search */}
       <CategoryNav
         categories={restaurant.categories || []}
         activeCategoryId={activeCategoryId}
@@ -295,7 +236,6 @@ export default function Home() {
         onSearchChange={setSearchQuery}
       />
 
-      {/* 6. Menu Section */}
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-10">
         {filteredCategories.length === 0 ? (
           <div className="text-center py-16 space-y-3 bg-zinc-900/40 rounded-3xl border border-zinc-800">
@@ -303,11 +243,8 @@ export default function Home() {
             <h3 className="text-lg font-bold text-zinc-200">Nenhum item encontrado</h3>
             <p className="text-xs text-zinc-500">Tente buscar por outro termo ou selecione uma categoria.</p>
             <button
-              onClick={() => {
-                setSearchQuery('');
-                setActiveCategoryId('all');
-              }}
-              className="px-4 py-2 bg-amber-500 text-zinc-950 font-bold text-xs rounded-xl shadow-md"
+              onClick={() => { setSearchQuery(''); setActiveCategoryId('all'); }}
+              className="px-4 py-2 bg-amber-500 text-zinc-950 font-bold text-xs rounded-xl"
             >
               Ver Todo o Cardápio
             </button>
@@ -316,23 +253,17 @@ export default function Home() {
           filteredCategories.map((cat) => (
             <section key={cat.id} className="space-y-4">
               <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
-                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                  {cat.name}
-                </h2>
-                <span className="text-xs text-zinc-500 font-medium">
-                  {cat.items.length} {cat.items.length === 1 ? 'opção' : 'opções'}
-                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">{cat.name}</h2>
+                <span className="text-xs text-zinc-500">{cat.items.length} {cat.items.length === 1 ? 'opção' : 'opções'}</span>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 {cat.items.map((item) => {
                   const cartEntry = cart.find((c) => c.item.id === item.id);
-                  const cartQty = cartEntry ? cartEntry.quantity : 0;
                   return (
                     <MenuItemCard
                       key={item.id}
                       item={item}
-                      cartQuantity={cartQty}
+                      cartQuantity={cartEntry?.quantity ?? 0}
                       onSelectItem={setSelectedItem}
                       onAddQuick={handleAddQuick}
                       onRemoveQuick={handleRemoveQuick}
@@ -345,21 +276,10 @@ export default function Home() {
         )}
       </main>
 
-      {/* 7. Floating Cart Bar */}
-      <FloatingCart
-        totalItems={totalCartItems}
-        subtotal={cartSubtotal}
-        onOpenCheckout={() => setIsCheckoutOpen(true)}
-      />
+      <FloatingCart totalItems={totalCartItems} subtotal={cartSubtotal} onOpenCheckout={() => setIsCheckoutOpen(true)} />
 
-      {/* 8. Item Details & Observation Modal */}
-      <ItemModal
-        item={selectedItem}
-        onClose={() => setSelectedItem(null)}
-        onAddToCart={handleAddToCart}
-      />
+      <ItemModal item={selectedItem} onClose={() => setSelectedItem(null)} onAddToCart={handleAddToCart} />
 
-      {/* 9. 1-Step Checkout Modal */}
       <CheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
@@ -371,7 +291,6 @@ export default function Home() {
         isSubmitting={isSubmittingCheckout}
       />
 
-      {/* 10. Pix Payment Modal */}
       {pixModalData && (
         <PixModal
           isOpen={!!pixModalData}
@@ -382,22 +301,14 @@ export default function Home() {
           pixCopyPaste={pixModalData.pixCopyPaste}
           onClose={() => setPixModalData(null)}
           onPaymentConfirmed={async () => {
-            const res = await fetch(getApiUrl(`/api/orders/${pixModalData.orderId}`));
-            if (res.ok) {
-              const data = await res.json();
-              setConfirmedOrder(data);
-            }
+            const res = await fetch(`/api/orders/${pixModalData.orderId}`);
+            if (res.ok) setConfirmedOrder(await res.json());
             setPixModalData(null);
           }}
         />
       )}
 
-      {/* 11. Order Confirmation & WhatsApp Modal */}
-      <OrderConfirmationModal
-        isOpen={!!confirmedOrder}
-        order={confirmedOrder}
-        onClose={() => setConfirmedOrder(null)}
-      />
+      <OrderConfirmationModal isOpen={!!confirmedOrder} order={confirmedOrder} onClose={() => setConfirmedOrder(null)} />
     </div>
   );
 }

@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Restaurant {
@@ -72,7 +74,7 @@ model Order {
   notes           String?
   status          String      @default("PENDING")
   paymentMethod   String
-  paymentProvider String      @default("mercadopago")
+  paymentProvider String      @default("none")
   paymentId       String?
   pixQrCode       String?
   pixCopyPaste    String?

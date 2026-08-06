@@ -1,9 +1,8 @@
-import { NextResponse } from 'next/server';
-import { ensureRestaurantSeeded, setDynamicRestaurantStatus } from '@/lib/seedHelper';
+import { db } from '@/lib/db';
+import { ensureRestaurantAdmin } from '@/lib/seedHelper';
 import { corsResponse, handleOptions } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export async function OPTIONS(req: Request) {
   return handleOptions(req);
@@ -11,30 +10,37 @@ export async function OPTIONS(req: Request) {
 
 export async function GET(req: Request) {
   try {
-    const restaurant = await ensureRestaurantSeeded();
+    const restaurant = await ensureRestaurantAdmin();
     return corsResponse(restaurant, 200, req);
   } catch (error) {
     console.error('Erro ao buscar restaurante:', error);
-    const fallback = await ensureRestaurantSeeded();
-    return corsResponse(fallback, 200, req);
+    return corsResponse({ error: 'Erro interno' }, 500, req);
   }
 }
 
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
-    const { isOpen } = body;
+    const restaurant = await ensureRestaurantAdmin();
 
-    let restaurant = await ensureRestaurantSeeded();
+    const updated = await db.restaurant.update({
+      where: { id: restaurant.id },
+      data: {
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.phone !== undefined && { phone: body.phone }),
+        ...(body.whatsappNumber !== undefined && { whatsappNumber: body.whatsappNumber }),
+        ...(body.address !== undefined && { address: body.address }),
+        ...(typeof body.isOpen === 'boolean' && { isOpen: body.isOpen }),
+        ...(body.openingHours !== undefined && { openingHours: body.openingHours }),
+        ...(body.deliveryFee !== undefined && { deliveryFee: Number(body.deliveryFee) }),
+        ...(body.estimatedDeliveryTime !== undefined && { estimatedDeliveryTime: body.estimatedDeliveryTime }),
+        ...(body.googleRating !== undefined && { googleRating: Number(body.googleRating) }),
+      },
+    });
 
-    if (typeof isOpen === 'boolean') {
-      restaurant = await setDynamicRestaurantStatus(isOpen);
-    }
-
-    return corsResponse(restaurant, 200, req);
+    return corsResponse(updated, 200, req);
   } catch (error) {
-    console.error('Erro ao atualizar status do restaurante:', error);
-    const fallback = await ensureRestaurantSeeded();
-    return corsResponse(fallback, 200, req);
+    console.error('Erro ao atualizar restaurante:', error);
+    return corsResponse({ error: 'Erro ao atualizar' }, 500, req);
   }
 }
