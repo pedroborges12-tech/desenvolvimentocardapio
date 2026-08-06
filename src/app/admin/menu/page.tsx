@@ -139,8 +139,11 @@ export default function AdminMenuPage() {
     setImage(PRESET_IMAGES[0].url);
     if (categories.length > 0) {
       setCategoryId(categories[0].id);
+      setIsCreatingNewCategory(false);
+    } else {
+      setCategoryId('');
+      setIsCreatingNewCategory(true);
     }
-    setIsCreatingNewCategory(false);
     setNewCategoryName('');
     setIsAvailable(true);
     setIsBestSeller(false);
@@ -561,21 +564,29 @@ export default function AdminMenuPage() {
                     <option value="NEW_CATEGORY">+ Criar nova categoria...</option>
                   </select>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Ex: Sobremesas Especiais..."
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                      className="flex-1 bg-zinc-950 border border-amber-500 rounded-xl px-3 py-2.5 text-xs text-zinc-100 outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setIsCreatingNewCategory(false)}
-                      className="px-3 py-2.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold"
-                    >
-                      Voltar
-                    </button>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Ex: Lanches, Bebidas, Sobremesas..."
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        className="flex-1 bg-zinc-950 border border-amber-500 rounded-xl px-3 py-2.5 text-xs text-zinc-100 outline-none focus:ring-2 focus:ring-amber-500/30"
+                      />
+                      {categories.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setIsCreatingNewCategory(false)}
+                          className="px-3 py-2.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold"
+                        >
+                          Voltar
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-zinc-500">
+                      A categoria será criada automaticamente ao salvar o produto.
+                    </p>
                   </div>
                 )}
               </div>
