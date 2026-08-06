@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Check, X, Image as ImageIcon, Flame, Star, Upload, Trash2, Edit3, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Plus, Check, X, Image as ImageIcon, Flame, Star, Upload, Trash2, Edit3, AlertTriangle, ChevronDown } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -65,6 +65,12 @@ export default function AdminMenuPage() {
 
   // Confirmação de Exclusão
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+
+  // Gerenciamento de Categorias
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [confirmDeleteCategoryId, setConfirmDeleteCategoryId] = useState<string | null>(null);
+  const [categoryDeleteError, setCategoryDeleteError] = useState('');
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
 
   // Campos do Formulário
   const [name, setName] = useState('');
@@ -323,7 +329,83 @@ export default function AdminMenuPage() {
           </button>
         </div>
 
-        {/* Lista de Produtos (Cards Clicáveis) */}
+        {/* Gerenciamento de Categorias */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden">
+          <button
+            onClick={() => { setShowCategoryManager(!showCategoryManager); setConfirmDeleteCategoryId(null); setCategoryDeleteError(''); }}
+            className="w-full flex items-center justify-between p-5 hover:bg-zinc-800/30 transition"
+          >
+            <h2 className="text-sm font-extrabold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
+              🏷️ Categorias
+              <span className="text-zinc-500 font-normal normal-case text-xs">({categories.length})</span>
+            </h2>
+            <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${showCategoryManager ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showCategoryManager && (
+            <div className="px-5 pb-5 border-t border-zinc-800">
+              {categories.length === 0 ? (
+                <p className="text-xs text-zinc-500 pt-4">Nenhuma categoria cadastrada. Crie uma ao adicionar um produto.</p>
+              ) : (
+                <div className="pt-4 space-y-3">
+                  <p className="text-[11px] text-zinc-500">Passe o mouse sobre a categoria e clique na lixeira para excluir. Só é possível excluir categorias sem produtos.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((cat) => (
+                      <div key={cat.id}>
+                        {confirmDeleteCategoryId === cat.id ? (
+                          <div className="flex items-center gap-2 px-3 py-2 bg-rose-500/10 border border-rose-500/30 rounded-2xl">
+                            {categoryDeleteError ? (
+                              <div className="flex items-center gap-2">
+                                <AlertTriangle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
+                                <span className="text-[11px] text-rose-300">{categoryDeleteError}</span>
+                                <button onClick={() => { setConfirmDeleteCategoryId(null); setCategoryDeleteError(''); }} className="text-zinc-400 hover:text-white text-[11px] underline">Ok</button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] text-rose-300">Excluir &quot;{cat.name}&quot;?</span>
+                                <button
+                                  onClick={async () => {
+                                    setIsDeletingCategory(true);
+                                    setCategoryDeleteError('');
+                                    try {
+                                      const res = await fetch(`/api/admin/categories?id=${cat.id}`, { method: 'DELETE' });
+                                      const data = await res.json();
+                                      if (!res.ok) { setCategoryDeleteError(data.error); return; }
+                                      setConfirmDeleteCategoryId(null);
+                                      fetchMenu();
+                                    } catch { setCategoryDeleteError('Erro ao excluir.'); }
+                                    finally { setIsDeletingCategory(false); }
+                                  }}
+                                  disabled={isDeletingCategory}
+                                  className="px-2 py-0.5 bg-rose-600 text-white text-[11px] font-bold rounded-lg disabled:opacity-50"
+                                >
+                                  {isDeletingCategory ? '...' : 'Sim'}
+                                </button>
+                                <button onClick={() => { setConfirmDeleteCategoryId(null); setCategoryDeleteError(''); }} className="px-2 py-0.5 bg-zinc-800 text-zinc-400 text-[11px] rounded-lg">Não</button>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="group/cat flex items-center gap-2 px-3 py-1.5 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 rounded-full transition">
+                            <span className="text-xs font-bold text-zinc-300">{cat.name}</span>
+                            <button
+                              onClick={() => { setConfirmDeleteCategoryId(cat.id); setCategoryDeleteError(''); }}
+                              className="text-zinc-700 hover:text-rose-400 transition opacity-0 group-hover/cat:opacity-100"
+                              title="Excluir categoria"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
             <h2 className="text-sm font-extrabold text-zinc-300 uppercase tracking-wider">

@@ -19,7 +19,6 @@ export async function GET(req: Request) {
     }));
     return corsResponse(categories, 200, req);
   } catch (error) {
-    console.error('Erro ao buscar categorias:', error);
     return corsResponse([], 200, req);
   }
 }
@@ -48,7 +47,31 @@ export async function POST(req: Request) {
 
     return corsResponse(newCat, 201, req);
   } catch (error) {
-    console.error('Erro ao criar categoria:', error);
     return corsResponse({ error: 'Erro ao criar categoria' }, 500, req);
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) return corsResponse({ error: 'ID obrigatório' }, 400, req);
+
+    const itemCount = await db.menuItem.count({ where: { categoryId: id } });
+    if (itemCount > 0) {
+      return corsResponse(
+        {
+          error: `Esta categoria possui ${itemCount} produto(s) vinculado(s). Remova os produtos antes de excluir a categoria.`,
+          itemCount,
+        },
+        400,
+        req
+      );
+    }
+
+    await db.category.delete({ where: { id } });
+    return corsResponse({ success: true }, 200, req);
+  } catch (error) {
+    return corsResponse({ error: 'Erro ao excluir categoria' }, 500, req);
   }
 }

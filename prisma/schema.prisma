@@ -28,6 +28,7 @@ model Restaurant {
 
   categories Category[]
   orders     Order[]
+  employees  Employee[]
 }
 
 model Category {
@@ -59,21 +60,41 @@ model MenuItem {
   @@index([categoryId])
 }
 
+model Employee {
+  id           String     @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  name         String
+  username     String
+  password     String
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  orders       Order[]
+
+  @@unique([restaurantId, username])
+  @@index([restaurantId])
+}
+
 model Order {
   id              String      @id @default(cuid())
+  seqNum          Int         @default(autoincrement())
   orderNumber     String      @default(cuid())
+  orderSource     String      @default("DELIVERY")
+  isTabOpen       Boolean     @default(false)
+  employeeId      String?
+  employee        Employee?   @relation(fields: [employeeId], references: [id])
   restaurantId    String
   restaurant      Restaurant  @relation(fields: [restaurantId], references: [id])
   customerName    String
-  customerPhone   String
+  customerPhone   String      @default("")
   deliveryType    String      @default("DELIVERY")
   address         String?
   subtotal        Float
-  deliveryFee     Float
+  deliveryFee     Float       @default(0)
   total           Float
   notes           String?
   status          String      @default("PENDING")
-  paymentMethod   String
+  paymentMethod   String      @default("IN_STORE")
   paymentProvider String      @default("none")
   paymentId       String?
   pixQrCode       String?
@@ -83,6 +104,7 @@ model Order {
   updatedAt       DateTime    @updatedAt
 
   @@index([restaurantId])
+  @@index([employeeId])
 }
 
 model OrderItem {

@@ -1,5 +1,4 @@
 import { db } from '@/lib/db';
-import { ensureRestaurantAdmin } from '@/lib/seedHelper';
 import { corsResponse, handleOptions } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
@@ -11,12 +10,12 @@ export async function OPTIONS(req: Request) {
 export async function GET(req: Request) {
   try {
     const orders = await db.order.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { seqNum: 'desc' },
       include: { items: true },
+      where: { isTabOpen: false },
     });
     return corsResponse(orders, 200, req);
   } catch (error) {
-    console.error('Erro ao buscar pedidos:', error);
     return corsResponse([], 200, req);
   }
 }
@@ -38,7 +37,21 @@ export async function PATCH(req: Request) {
 
     return corsResponse(updated, 200, req);
   } catch (error) {
-    console.error('Erro ao atualizar pedido:', error);
     return corsResponse({ error: 'Erro ao atualizar' }, 500, req);
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) return corsResponse({ error: 'ID obrigatório' }, 400, req);
+
+    await db.orderItem.deleteMany({ where: { orderId: id } });
+    await db.order.delete({ where: { id } });
+
+    return corsResponse({ success: true }, 200, req);
+  } catch (error) {
+    return corsResponse({ error: 'Erro ao excluir pedido' }, 500, req);
   }
 }
